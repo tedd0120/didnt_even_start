@@ -1,11 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AchievedItem, GiveUpItem } from "../types/models";
+import { AchievedItem, GiveUpItem, Profile } from "../types/models";
 
 const GIVE_UPS_KEY = "@giveups";
 const BADGES_KEY = "@badges";
 const ACHIEVED_KEY = "@achieved";
 const GIVE_UP_TOTAL_KEY = "@giveups_total";
 const ACHIEVED_SUBTITLE_KEY = "@achieved_subtitle";
+const PROFILE_KEY = "@profile";
 
 export async function loadGiveUps(): Promise<GiveUpItem[]> {
   const raw = await AsyncStorage.getItem(GIVE_UPS_KEY);
@@ -79,4 +80,25 @@ export async function loadAchievedSubtitleIndex(): Promise<number | null> {
 
 export async function saveAchievedSubtitleIndex(index: number): Promise<void> {
   await AsyncStorage.setItem(ACHIEVED_SUBTITLE_KEY, String(index));
+}
+
+export async function loadProfile(): Promise<Profile> {
+  const raw = await AsyncStorage.getItem(PROFILE_KEY);
+  if (!raw) {
+    return { nickname: "你", showOnPoster: true };
+  }
+  try {
+    const parsed = JSON.parse(raw) as Profile;
+    return {
+      nickname: parsed.nickname || "你",
+      showOnPoster: parsed.showOnPoster ?? true,
+      avatarUri: parsed.avatarUri,
+    };
+  } catch {
+    return { nickname: "你", showOnPoster: true };
+  }
+}
+
+export async function saveProfile(profile: Profile): Promise<void> {
+  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
 }

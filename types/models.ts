@@ -11,6 +11,12 @@ export type AchievedItem = GiveUpItem & {
   achievedAt: string;
 };
 
+export type Profile = {
+  avatarUri?: string;
+  nickname: string;
+  showOnPoster: boolean;
+};
+
 export type BadgeDefinition = {
   id: string;
   title: string;

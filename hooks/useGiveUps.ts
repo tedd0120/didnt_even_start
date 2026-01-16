@@ -123,29 +123,42 @@ export function useGiveUps() {
   );
 
   const deleteGiveUp = useCallback(
-    async (id: string): Promise<GiveUpItem | null> => {
+    async (id: string): Promise<boolean> => {
       const target = giveUps.find((item) => item.id === id);
       if (!target) {
-        return null;
+        return false;
       }
       const nextGiveUps = giveUps.filter((item) => item.id !== id);
       setGiveUps(nextGiveUps);
       await saveGiveUps(nextGiveUps);
-      return target;
+      return true;
     },
     [giveUps]
   );
 
-  const restoreGiveUp = useCallback(
-    async (item: GiveUpItem) => {
-      if (giveUps.some((existing) => existing.id === item.id)) {
-        return;
-      }
-      const nextGiveUps = [item, ...giveUps];
-      setGiveUps(nextGiveUps);
-      await saveGiveUps(nextGiveUps);
+  const toggleAchievedPin = useCallback(
+    async (id: string) => {
+      const nextAchieved = achieved.map((item) =>
+        item.id === id ? { ...item, pinned: !item.pinned } : item
+      );
+      setAchieved(nextAchieved);
+      await saveAchieved(nextAchieved);
     },
-    [giveUps]
+    [achieved]
+  );
+
+  const deleteAchieved = useCallback(
+    async (id: string): Promise<boolean> => {
+      const target = achieved.find((item) => item.id === id);
+      if (!target) {
+        return false;
+      }
+      const nextAchieved = achieved.filter((item) => item.id !== id);
+      setAchieved(nextAchieved);
+      await saveAchieved(nextAchieved);
+      return true;
+    },
+    [achieved]
   );
 
   const unlockedBadges = BADGES.filter((badge) =>
@@ -164,6 +177,7 @@ export function useGiveUps() {
     togglePin,
     moveToAchieved,
     deleteGiveUp,
-    restoreGiveUp,
+    toggleAchievedPin,
+    deleteAchieved,
   };
 }

@@ -3,8 +3,10 @@ import {
   Alert,
   ActivityIndicator,
   FlatList,
+  Image,
   SafeAreaView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -16,11 +18,13 @@ import { Feather } from "@expo/vector-icons";
 import BadgeCard from "../../components/BadgeCard";
 import BadgeSharePoster from "../../components/BadgeSharePoster";
 import { useGiveUps } from "../../hooks/useGiveUps";
+import { useProfile } from "../../hooks/useProfile";
 import { BADGES } from "../../lib/badges";
 import { COLORS, SPACING } from "../../lib/theme";
 
 export default function BadgeWallScreen() {
   const { unlockedBadges, unlockedBadgeIds, loading, reload } = useGiveUps();
+  const { profile, updateProfile, reload: reloadProfile } = useProfile();
   const [saving, setSaving] = useState(false);
   const viewShotRef = useRef<ViewShot>(null);
   const timestamp = useMemo(
@@ -38,8 +42,13 @@ export default function BadgeWallScreen() {
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload])
+      reloadProfile();
+    }, [reload, reloadProfile])
   );
+
+  const togglePosterProfile = (value: boolean) => {
+    updateProfile({ ...profile, showOnPoster: value });
+  };
 
   const handleShare = async () => {
     if (saving) {
@@ -83,6 +92,33 @@ export default function BadgeWallScreen() {
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             <View style={styles.shareSection}>
+              <View style={styles.profileCard}>
+                <View style={styles.profileInfo}>
+                  {profile.avatarUri ? (
+                    <Image
+                      source={{ uri: profile.avatarUri }}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <View style={styles.avatarPlaceholder} />
+                  )}
+                  <View style={styles.profileText}>
+                    <Text style={styles.profileName}>
+                      {profile.nickname || "你"}
+                    </Text>
+                    <Text style={styles.profileHint}>勋章也需要主角</Text>
+                  </View>
+                </View>
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchLabel}>海报显示头像昵称</Text>
+                  <Switch
+                    value={profile.showOnPoster}
+                    onValueChange={togglePosterProfile}
+                    trackColor={{ true: COLORS.primary, false: COLORS.muted }}
+                    thumbColor={COLORS.card}
+                  />
+                </View>
+              </View>
               <View style={styles.shareHeader}>
                 <Text style={styles.shareTitle}>分享勋章拼图</Text>
                 <TouchableOpacity
@@ -102,7 +138,13 @@ export default function BadgeWallScreen() {
                 </TouchableOpacity>
               </View>
               <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1 }}>
-                <BadgeSharePoster badges={unlockedBadges} timestamp={timestamp} />
+                <BadgeSharePoster
+                  badges={unlockedBadges}
+                  timestamp={timestamp}
+                  showProfile={profile.showOnPoster}
+                  avatarUri={profile.avatarUri}
+                  nickname={profile.nickname}
+                />
               </ViewShot>
             </View>
           }
@@ -136,6 +178,53 @@ const styles = StyleSheet.create({
   shareSection: {
     gap: SPACING.md,
     marginBottom: SPACING.lg,
+  },
+  profileCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    padding: SPACING.md,
+    gap: SPACING.md,
+  },
+  profileInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.8)",
+  },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.8)",
+    backgroundColor: COLORS.background,
+  },
+  profileText: {
+    gap: 4,
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  profileHint: {
+    color: COLORS.muted,
+    fontSize: 12,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  switchLabel: {
+    color: COLORS.text,
+    fontSize: 13,
   },
   shareHeader: {
     flexDirection: "row",
