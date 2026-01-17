@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   loadAchieved,
+  loadAchievedTotalCount,
   loadGiveUps,
   loadGiveUpTotalCount,
   loadUnlockedBadgeIds,
   saveAchieved,
+  saveAchievedTotalCount,
   saveGiveUps,
   saveGiveUpTotalCount,
   saveUnlockedBadgeIds,
@@ -28,23 +30,36 @@ export function useGiveUps() {
   const [achieved, setAchieved] = useState<AchievedItem[]>([]);
   const [unlockedBadgeIds, setUnlockedBadgeIds] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [achievedTotalCount, setAchievedTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [items, achievedItems, badgeIds, storedTotal] = await Promise.all([
+    const [
+      items,
+      achievedItems,
+      badgeIds,
+      storedTotal,
+      storedAchievedTotal,
+    ] = await Promise.all([
       loadGiveUps(),
       loadAchieved(),
       loadUnlockedBadgeIds(),
       loadGiveUpTotalCount(),
+      loadAchievedTotalCount(),
     ]);
     const inferredTotal = storedTotal ?? items.length + achievedItems.length;
+    const inferredAchievedTotal = storedAchievedTotal ?? achievedItems.length;
     setGiveUps(items);
     setAchieved(achievedItems);
     setUnlockedBadgeIds(badgeIds);
     setTotalCount(inferredTotal);
+    setAchievedTotalCount(inferredAchievedTotal);
     if (storedTotal === null) {
       await saveGiveUpTotalCount(inferredTotal);
+    }
+    if (storedAchievedTotal === null) {
+      await saveAchievedTotalCount(inferredAchievedTotal);
     }
     setLoading(false);
   }, []);
@@ -115,11 +130,17 @@ export function useGiveUps() {
         achievedAt: new Date().toISOString(),
       };
       const nextAchieved = [achievedItem, ...achieved];
+      const nextAchievedTotal = achievedTotalCount + 1;
       setGiveUps(nextGiveUps);
       setAchieved(nextAchieved);
-      await Promise.all([saveGiveUps(nextGiveUps), saveAchieved(nextAchieved)]);
+      setAchievedTotalCount(nextAchievedTotal);
+      await Promise.all([
+        saveGiveUps(nextGiveUps),
+        saveAchieved(nextAchieved),
+        saveAchievedTotalCount(nextAchievedTotal),
+      ]);
     },
-    [achieved, giveUps]
+    [achieved, giveUps, achievedTotalCount]
   );
 
   const deleteGiveUp = useCallback(
@@ -171,6 +192,7 @@ export function useGiveUps() {
     unlockedBadgeIds,
     unlockedBadges,
     totalCount,
+    achievedTotalCount,
     loading,
     reload,
     addGiveUp,

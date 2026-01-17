@@ -41,6 +41,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="dual-tree"
+        options={{
+          title: "双界树",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="git-branch" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "我",

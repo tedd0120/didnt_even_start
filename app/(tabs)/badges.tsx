@@ -17,15 +17,22 @@ import ViewShot from "react-native-view-shot";
 import { Feather } from "@expo/vector-icons";
 import BadgeCard from "../../components/BadgeCard";
 import BadgeSharePoster from "../../components/BadgeSharePoster";
+import PixelSprite from "../../components/PixelSprite";
+import SpeciesSharePoster from "../../components/SpeciesSharePoster";
 import { useGiveUps } from "../../hooks/useGiveUps";
 import { useProfile } from "../../hooks/useProfile";
 import { BADGES } from "../../lib/badges";
 import { COLORS, SPACING } from "../../lib/theme";
+import { AtlasFrame, PIXEL_FRAMES } from "../../lib/pixelAtlas";
+import { loadSeaSpecies, loadSkySpecies } from "../../lib/storage";
 
 export default function BadgeWallScreen() {
   const { unlockedBadges, unlockedBadgeIds, loading, reload } = useGiveUps();
   const { profile, updateProfile, reload: reloadProfile } = useProfile();
   const [saving, setSaving] = useState(false);
+  const [shareMode, setShareMode] = useState<"badges" | "species">("badges");
+  const [seaSpecies, setSeaSpecies] = useState<string[]>([]);
+  const [skySpecies, setSkySpecies] = useState<string[]>([]);
   const viewShotRef = useRef<ViewShot>(null);
   const timestamp = useMemo(
     () =>
@@ -43,6 +50,8 @@ export default function BadgeWallScreen() {
     useCallback(() => {
       reload();
       reloadProfile();
+      loadSeaSpecies().then(setSeaSpecies);
+      loadSkySpecies().then(setSkySpecies);
     }, [reload, reloadProfile])
   );
 
@@ -54,8 +63,12 @@ export default function BadgeWallScreen() {
     if (saving) {
       return;
     }
-    if (unlockedBadges.length === 0) {
+    if (shareMode === "badges" && unlockedBadges.length === 0) {
       Alert.alert("还没有勋章", "放弃一件事再来分享吧。");
+      return;
+    }
+    if (shareMode === "species" && seaSpecies.length + skySpecies.length === 0) {
+      Alert.alert("还没有物种", "先在双界树中解锁物种再来分享。");
       return;
     }
     setSaving(true);
@@ -119,32 +132,111 @@ export default function BadgeWallScreen() {
                   />
                 </View>
               </View>
+              <View style={styles.speciesCard}>
+                <View style={styles.speciesHeader}>
+                  <Text style={styles.speciesTitle}>双界树已解锁物种</Text>
+                  <View style={styles.speciesCount}>
+                    <Text style={styles.speciesCountText}>
+                      海底 {seaSpecies.length}/100
+                    </Text>
+                    <Text style={styles.speciesCountText}>
+                      天空 {skySpecies.length}/100
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.speciesIcons}>
+                  {Array.from({ length: Math.min(seaSpecies.length, 4) }).map(
+                    (_, index) => (
+                      <PixelSprite
+                        key={`sea-${index}`}
+                        frame={PIXEL_FRAMES.unknown as AtlasFrame}
+                        size={18}
+                        tintColor="#9BD9FF"
+                      />
+                    )
+                  )}
+                  {Array.from({ length: Math.min(skySpecies.length, 4) }).map(
+                    (_, index) => (
+                      <PixelSprite
+                        key={`sky-${index}`}
+                        frame={PIXEL_FRAMES.unknown as AtlasFrame}
+                        size={18}
+                        tintColor="#FFE08A"
+                      />
+                    )
+                  )}
+                </View>
+              </View>
               <View style={styles.shareHeader}>
-                <Text style={styles.shareTitle}>分享勋章拼图</Text>
-                <TouchableOpacity
-                  style={[
-                    styles.shareButton,
-                    (saving || unlockedBadges.length === 0) &&
-                      styles.shareButtonDisabled,
-                  ]}
-                  onPress={handleShare}
-                  activeOpacity={0.9}
-                  disabled={saving || unlockedBadges.length === 0}
-                >
-                  <Feather name="share-2" size={16} color={COLORS.text} />
-                  <Text style={styles.shareButtonText}>
-                    {saving ? "保存中..." : "一键保存"}
-                  </Text>
-                </TouchableOpacity>
+                <Text style={styles.shareTitle}>
+                  {shareMode === "badges" ? "分享勋章拼图" : "分享物种拼图"}
+                </Text>
+                <View style={styles.shareActions}>
+                  <View style={styles.shareToggle}>
+                    <TouchableOpacity
+                      style={[
+                        styles.shareToggleButton,
+                        shareMode === "badges" && styles.shareToggleActive,
+                      ]}
+                      onPress={() => setShareMode("badges")}
+                    >
+                      <Text style={styles.shareToggleText}>勋章</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.shareToggleButton,
+                        shareMode === "species" && styles.shareToggleActive,
+                      ]}
+                      onPress={() => setShareMode("species")}
+                    >
+                      <Text style={styles.shareToggleText}>物种</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.shareButton,
+                      (saving ||
+                        (shareMode === "badges" && unlockedBadges.length === 0) ||
+                        (shareMode === "species" &&
+                          seaSpecies.length + skySpecies.length === 0)) &&
+                        styles.shareButtonDisabled,
+                    ]}
+                    onPress={handleShare}
+                    activeOpacity={0.9}
+                    disabled={
+                      saving ||
+                      (shareMode === "badges" && unlockedBadges.length === 0) ||
+                      (shareMode === "species" &&
+                        seaSpecies.length + skySpecies.length === 0)
+                    }
+                  >
+                    <Feather name="share-2" size={16} color={COLORS.text} />
+                    <Text style={styles.shareButtonText}>
+                      {saving ? "保存中..." : "一键保存"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1 }}>
-                <BadgeSharePoster
-                  badges={unlockedBadges}
-                  timestamp={timestamp}
-                  showProfile={profile.showOnPoster}
-                  avatarUri={profile.avatarUri}
-                  nickname={profile.nickname}
-                />
+                {shareMode === "badges" ? (
+                  <BadgeSharePoster
+                    badges={unlockedBadges}
+                    timestamp={timestamp}
+                    showProfile={profile.showOnPoster}
+                    avatarUri={profile.avatarUri}
+                    nickname={profile.nickname}
+                  />
+                ) : (
+                  <SpeciesSharePoster
+                    seaCount={seaSpecies.length}
+                    skyCount={skySpecies.length}
+                    maxCount={100}
+                    timestamp={timestamp}
+                    showProfile={profile.showOnPoster}
+                    avatarUri={profile.avatarUri}
+                    nickname={profile.nickname}
+                  />
+                )}
               </ViewShot>
             </View>
           }
@@ -226,6 +318,32 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 13,
   },
+  speciesCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+  },
+  speciesHeader: {
+    gap: 6,
+  },
+  speciesTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  speciesCount: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+  },
+  speciesCountText: {
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+  speciesIcons: {
+    flexDirection: "row",
+    gap: SPACING.xs,
+  },
   shareHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -244,6 +362,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderRadius: 999,
+  },
+  shareActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  shareToggle: {
+    flexDirection: "row",
+    backgroundColor: COLORS.background,
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
+  },
+  shareToggleButton: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  shareToggleActive: {
+    backgroundColor: COLORS.card,
+  },
+  shareToggleText: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: "600",
   },
   shareButtonDisabled: {
     opacity: 0.7,
